@@ -247,7 +247,7 @@ elif st.session_state.current_page == "📚 Works":
             date = st.date_input("Creation Date")
             
             uploaded_file = None
-            if work_type == "Fan Art":
+            if work_type in ["Fan Art", "Handmade Works"]:
                 uploaded_file = st.file_uploader("Upload Image", type=['png', 'jpg', 'jpeg'])
                 if uploaded_file is not None:
                     st.image(uploaded_file, caption="Preview", width=300)
@@ -272,237 +272,69 @@ elif st.session_state.current_page == "📚 Works":
                                 os.remove(temp_path)
                     else:
                         st.info("Document preview only supports txt and Word formats")
-            else:
-                uploaded_file = st.file_uploader("Upload Image", type=['png', 'jpg', 'jpeg'])
-                if uploaded_file is not None:
-                    st.image(uploaded_file, caption="Preview", width=300)
             
             if st.form_submit_button("Publish Work"):
-                new_work = {
-                    "title": title,
-                    "description": description,
-                    "date": date.strftime("%Y-%m-%d"),
-                    "file": uploaded_file
-                }
-                
-                if work_type in st.session_state.works:
-                    st.session_state.works[work_type].append(new_work)
-                    st.success("Work published successfully!")
+                if uploaded_file is not None:
+                    new_work = {
+                        "title": title,
+                        "description": description,
+                        "date": date.strftime("%Y-%m-%d"),
+                        "file": uploaded_file
+                    }
+                    
+                    if work_type in st.session_state.works:
+                        st.session_state.works[work_type].append(new_work)
+                        st.success("Work published successfully!")
+                    else:
+                        st.error("Invalid work type!")
                 else:
-                    st.error("Invalid work type!")
+                    st.error("Please upload a file!")
 
-    # Work categories
+    # 显示作品
     categories = ["All"] + list(st.session_state.works.keys())
     selected_category = st.selectbox("Select Category", categories)
     
-    # Display works
     if selected_category == "All":
         for category, items in st.session_state.works.items():
             st.markdown(f"### {category}")
-            # Display 2 works per row
             for i in range(0, len(items), 2):
                 cols = st.columns(2)
                 for j in range(2):
                     if i + j < len(items):
                         with cols[j]:
                             work = items[i + j]
-                            if work['file'] is not None:
-                                if isinstance(work['file'], str):  # If it's a file path
-                                    try:
-                                        # Check file extension
-                                        file_ext = os.path.splitext(work['file'])[1].lower()
-                                        if file_ext in ['.jpg', '.jpeg', '.png']:
-                                            image = Image.open(work['file'])
-                                            # Convert image to base64
-                                            buffered = BytesIO()
-                                            image.save(buffered, format="JPEG")
-                                            img_str = base64.b64encode(buffered.getvalue()).decode()
-                                            
-                                            st.markdown(f"""
-                                            <div style='
-                                                background-color: white;
-                                                padding: 15px;
-                                                border-radius: 10px;
-                                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                                margin: 10px;
-                                                height: 100%;
-                                            '>
-                                                <h5 style='margin-bottom: 10px;'>{work['title']}</h5>
-                                                <p style='margin: 5px 0; color: #666;'>{work['description']}</p>
-                                                <p style='margin: 5px 0; color: #666;'>Creation Date: {work['date']}</p>
-                                                <div style='width: 100%; height: 300px; display: flex; justify-content: center; align-items: center; margin-top: 10px;'>
-                                                    <img src='data:image/jpeg;base64,{img_str}' style='max-width: 100%; max-height: 300px; object-fit: contain;'/>
-                                                </div>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                                        elif file_ext in ['.txt']:
-                                            with open(work['file'], 'r', encoding='utf-8') as f:
-                                                content = f.read()
-                                            preview_content = content[:25] + "..." if len(content) > 25 else content
-                                            st.markdown(f"""
-                                            <div style='
-                                                background-color: white;
-                                                padding: 15px;
-                                                border-radius: 10px;
-                                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                                margin: 10px;
-                                                height: 100%;
-                                            '>
-                                                <h5 style='margin-bottom: 10px;'>{work['title']}</h5>
-                                                <p style='margin: 5px 0; color: #666;'>{work['description']}</p>
-                                                <p style='margin: 5px 0; color: #666;'>Creation Date: {work['date']}</p>
-                                                <div style='margin-top: 10px;'>
-                                                    <pre style='white-space: pre-wrap; word-wrap: break-word;'>{preview_content}</pre>
-                                                </div>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                                        elif file_ext in ['.doc', '.docx']:
-                                            doc = Document(work['file'])
-                                            content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-                                            preview_content = content[:25] + "..." if len(content) > 25 else content
-                                            st.markdown(f"""
-                                            <div style='
-                                                background-color: white;
-                                                padding: 15px;
-                                                border-radius: 10px;
-                                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                                margin: 10px;
-                                                height: 100%;
-                                            '>
-                                                <h5 style='margin-bottom: 10px;'>{work['title']}</h5>
-                                                <p style='margin: 5px 0; color: #666;'>{work['description']}</p>
-                                                <p style='margin: 5px 0; color: #666;'>Creation Date: {work['date']}</p>
-                                                <div style='margin-top: 10px;'>
-                                                    <pre style='white-space: pre-wrap; word-wrap: break-word;'>{preview_content}</pre>
-                                                </div>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                                    except Exception as e:
-                                        st.error(f"Cannot read file: {str(e)}")
-                                elif hasattr(work['file'], 'type'):  # If it's an uploaded file
-                                    if work['file'].type.startswith('image/'):
-                                        st.image(work['file'], caption="Work Preview", width=300)
-                                    elif work['file'].type == "text/plain":
-                                        content = work['file'].getvalue().decode()
-                                        st.text_area("Document Preview", content, height=200, key=f"preview_{work['title']}")
-                                    elif work['file'].type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-                                        # Save temporary file
-                                        temp_path = f"temp_{work['file'].name}"
-                                        with open(temp_path, "wb") as f:
-                                            f.write(work['file'].getvalue())
-                                        # Read Word file content
-                                        try:
-                                            doc = Document(temp_path)
-                                            content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-                                            st.text_area("Document Preview", content, height=200, key=f"preview_{work['title']}")
-                                        except Exception as e:
-                                            st.error(f"Cannot read Word file: {str(e)}")
-                                        finally:
-                                            # Delete temporary file
-                                            if os.path.exists(temp_path):
-                                                os.remove(temp_path)
-    else:
-        items = st.session_state.works.get(selected_category, [])
-        # Display 2 works per row
-        for i in range(0, len(items), 2):
-            cols = st.columns(2)
-            for j in range(2):
-                if i + j < len(items):
-                    with cols[j]:
-                        work = items[i + j]
-                        if work['file'] is not None:
-                            if isinstance(work['file'], str):  # If it's a file path
-                                try:
-                                    # Check file extension
-                                    file_ext = os.path.splitext(work['file'])[1].lower()
-                                    if file_ext in ['.jpg', '.jpeg', '.png']:
-                                        image = Image.open(work['file'])
-                                        # Convert image to base64
-                                        buffered = BytesIO()
-                                        image.save(buffered, format="JPEG")
-                                        img_str = base64.b64encode(buffered.getvalue()).decode()
-                                        
-                                        st.markdown(f"""
-                                        <div style='
-                                            background-color: white;
-                                            padding: 15px;
-                                            border-radius: 10px;
-                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                            margin: 10px;
-                                            height: 100%;
-                                        '>
-                                            <h5 style='margin-bottom: 10px;'>{work['title']}</h5>
-                                            <p style='margin: 5px 0; color: #666;'>{work['description']}</p>
-                                            <p style='margin: 5px 0; color: #666;'>Creation Date: {work['date']}</p>
-                                            <div style='width: 100%; height: 300px; display: flex; justify-content: center; align-items: center; margin-top: 10px;'>
-                                                <img src='data:image/jpeg;base64,{img_str}' style='max-width: 100%; max-height: 300px; object-fit: contain;'/>
-                                            </div>
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                    elif file_ext in ['.txt']:
-                                        with open(work['file'], 'r', encoding='utf-8') as f:
-                                            content = f.read()
-                                        preview_content = content[:25] + "..." if len(content) > 25 else content
-                                        st.markdown(f"""
-                                        <div style='
-                                            background-color: white;
-                                            padding: 15px;
-                                            border-radius: 10px;
-                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                            margin: 10px;
-                                            height: 100%;
-                                        '>
-                                            <h5 style='margin-bottom: 10px;'>{work['title']}</h5>
-                                            <p style='margin: 5px 0; color: #666;'>{work['description']}</p>
-                                            <p style='margin: 5px 0; color: #666;'>Creation Date: {work['date']}</p>
-                                            <div style='margin-top: 10px;'>
-                                                <pre style='white-space: pre-wrap; word-wrap: break-word;'>{preview_content}</pre>
-                                            </div>
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                    elif file_ext in ['.doc', '.docx']:
-                                        doc = Document(work['file'])
-                                        content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-                                        preview_content = content[:25] + "..." if len(content) > 25 else content
-                                        st.markdown(f"""
-                                        <div style='
-                                            background-color: white;
-                                            padding: 15px;
-                                            border-radius: 10px;
-                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                            margin: 10px;
-                                            height: 100%;
-                                        '>
-                                            <h5 style='margin-bottom: 10px;'>{work['title']}</h5>
-                                            <p style='margin: 5px 0; color: #666;'>{work['description']}</p>
-                                            <p style='margin: 5px 0; color: #666;'>Creation Date: {work['date']}</p>
-                                            <div style='margin-top: 10px;'>
-                                                <pre style='white-space: pre-wrap; word-wrap: break-word;'>{preview_content}</pre>
-                                            </div>
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                except Exception as e:
-                                    st.error(f"Cannot read file: {str(e)}")
-                            elif hasattr(work['file'], 'type'):  # If it's an uploaded file
+                            st.markdown(f"""
+                            <div style='
+                                background-color: white;
+                                padding: 15px;
+                                border-radius: 10px;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                margin: 10px;
+                                height: 100%;
+                            '>
+                                <h5 style='margin-bottom: 10px;'>{work['title']}</h5>
+                                <p style='margin: 5px 0; color: #666;'>{work['description']}</p>
+                                <p style='margin: 5px 0; color: #666;'>Creation Date: {work['date']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if hasattr(work['file'], 'type'):
                                 if work['file'].type.startswith('image/'):
                                     st.image(work['file'], caption="Work Preview", width=300)
                                 elif work['file'].type == "text/plain":
                                     content = work['file'].getvalue().decode()
-                                    st.text_area("Document Preview", content, height=200, key=f"preview_{work['title']}")
+                                    st.text_area("Document Preview", content, height=200)
                                 elif work['file'].type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-                                    # Save temporary file
                                     temp_path = f"temp_{work['file'].name}"
                                     with open(temp_path, "wb") as f:
                                         f.write(work['file'].getvalue())
-                                    # Read Word file content
                                     try:
                                         doc = Document(temp_path)
                                         content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-                                        st.text_area("Document Preview", content, height=200, key=f"preview_{work['title']}")
+                                        st.text_area("Document Preview", content, height=200)
                                     except Exception as e:
                                         st.error(f"Cannot read Word file: {str(e)}")
                                     finally:
-                                        # Delete temporary file
                                         if os.path.exists(temp_path):
                                             os.remove(temp_path)
 
@@ -674,12 +506,8 @@ elif st.session_state.current_page == "👤 About Me":
     with col1:
         st.markdown('<div class="content">', unsafe_allow_html=True)
         st.markdown("### Personal Avatar")
-        try:
-            image = Image.open("images/avatar.jpg")
-            st.image(image, width=125)
-        except Exception as e:
-            st.error("Avatar image not found. Please add your avatar image to the 'images' folder.")
-            st.image("https://via.placeholder.com/200", width=200)
+        # 使用占位图片
+        st.image("https://via.placeholder.com/200", width=125)
         
         st.markdown("""
         ### Basic Information
